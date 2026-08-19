@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KeyFix</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4eee6;
+    --surface: #fdfcf9;
+    --surface-hover: #f5eedf;
+    --text: #36241a;
+    --text-dim: #7a6355;
+    --accent: #d46b45;
+    --accent-hover: #b85734;
+    --border: #e6dac8;
+    --success: #5c8c63;
+    --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-ar: 'IBM Plex Sans Arabic', sans-serif;
+    --radius: 14px;
+    --shadow-sm: 0 4px 12px rgba(54, 36, 26, 0.06);
+  }
+  [data-theme="dark"] {
+    --bg: #1c1512;
+    --surface: #261d19;
+    --surface-hover: #332722;
+    --text: #f4eee6;
+    --text-dim: #a69186;
+    --accent: #e27c56;
+    --accent-hover: #f08f6c;
+    --border: #382c26;
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    width: 380px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    line-height: 1.5;
+  }
+  .wrap { padding: 14px; }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .brand {
+    font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: -0.02em;
+  }
+  .brand span { color: var(--accent); }
+  .header-btns { display: flex; gap: 6px; }
+
+  .icon-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .icon-btn:hover { background: var(--surface-hover); transform: translateY(-1px); }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .direction-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+  }
+  .dir-label {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 40px;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+  }
+  .dir-label.active { background: var(--accent); color: #fff; }
+
+  .swap-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+  }
+  .swap-btn:hover { border-color: var(--accent); color: var(--accent); transform: rotate(180deg); }
+  .swap-btn { transition: transform 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+
+  .auto-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .auto-badge.on { color: var(--success); border-color: var(--success); }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  textarea {
+    width: 100%;
+    min-height: 76px;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    display: block;
+  }
+  textarea::placeholder { color: var(--text-dim); opacity: 0.6; }
+  textarea.rtl { direction: rtl; font-family: var(--font-ar); }
+
+  .action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .action-btn:hover { background: var(--border); color: var(--text); }
+  .copy-btn { background: var(--text); color: var(--bg); }
+  .copy-btn:hover { background: var(--accent); color: #fff; }
+
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .footer-row a { color: var(--text-dim); text-decoration: none; }
+  .footer-row a:hover { color: var(--accent); }
+
+  .toast {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--text);
+    color: var(--bg);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Key<span>Fix</span></div>
+    <div class="header-btns">
+      <button class="icon-btn" id="themeToggle" aria-label="Toggle Theme" title="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="direction-indicator">
+      <span class="dir-label active" id="labelLeft">EN</span>
+      <button id="swapBtn" class="swap-btn" aria-label="Swap direction" title="Swap direction">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 8 16 13"></polyline>
+          <line x1="21" y1="8" x2="9" y2="8"></line>
+          <polyline points="8 21 3 16 8 11"></polyline>
+          <line x1="3" y1="16" x2="15" y2="16"></line>
+        </svg>
+      </button>
+      <span class="dir-label" id="labelRight">AR</span>
+    </div>
+    <span class="auto-badge on" id="autoBadge" title="Automatically detects which layout your text is in">AUTO</span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span id="inputLabel">Input</span>
+      <button class="action-btn" id="clearBtn">Clear</button>
+    </div>
+    <textarea id="inputText" placeholder="e.g., hgsghl ugd;l..." spellcheck="false"></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span id="outputLabel">Output</span>
+      <button class="action-btn copy-btn" id="copyBtn">Copy</button>
+    </div>
+    <textarea id="outputText" readonly placeholder="Result appears here..."></textarea>
+  </div>
+
+  <div class="footer-row">
+    <span>100% local — nothing leaves your device.</span>
+    <a href="https://github.com/NOOB4EVER69" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied</div>
+
+<script src="keymap.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
