@@ -5,42 +5,76 @@
 <title>KeyFix</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #f4eee6;
-    --surface: #fdfcf9;
-    --surface-hover: #f5eedf;
-    --text: #36241a;
-    --text-dim: #7a6355;
-    --accent: #d46b45;
-    --accent-hover: #b85734;
-    --border: #e6dac8;
-    --success: #5c8c63;
-    --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
-    --font-ar: 'IBM Plex Sans Arabic', sans-serif;
-    --radius: 14px;
-    --shadow-sm: 0 4px 12px rgba(54, 36, 26, 0.06);
-  }
-  [data-theme="dark"] {
-    --bg: #1c1512;
-    --surface: #261d19;
-    --surface-hover: #332722;
-    --text: #f4eee6;
-    --text-dim: #a69186;
-    --accent: #e27c56;
-    --accent-hover: #f08f6c;
-    --border: #382c26;
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    width: 380px;
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-ui);
-    line-height: 1.5;
-  }
-  .wrap { padding: 14px; }
+    :root {
+      --bg: #f4eee6;
+      --surface: #fdfcf9;
+      --surface-hover: #f5eedf;
+      --text: #36241a;
+      --text-dim: #7a6355;
+      --accent: #d46b45;
+      --accent-hover: #b85734;
+      --border: #e6dac8;
+      --success: #5c8c63;
+      --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+      --font-ar: 'IBM Plex Sans Arabic', sans-serif;
+      --radius: 14px;
+      --shadow-sm: 0 4px 12px rgba(54, 36, 26, 0.06);
+      --shortcut-bg: #fff3ec;
+      --shortcut-text: #b85734;
+      --shortcut-border: #f0d9c4;
+      --shortcut-glow: rgba(212, 107, 69, 0.35);
+    }
+    [data-theme="dark"] {
+      --bg: #1c1512;
+      --surface: #261d19;
+      --surface-hover: #332722;
+      --text: #f4eee6;
+      --text-dim: #a69186;
+      --accent: #e27c56;
+      --accent-hover: #f08f6c;
+      --border: #382c26;
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+      --shortcut-bg: #3d2a22;
+      --shortcut-text: #f08f6c;
+      --shortcut-border: #5c3d30;
+      --shortcut-glow: rgba(226, 124, 86, 0.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 380px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      line-height: 1.5;
+    }
+    .wrap { padding: 14px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .shortcut-hint,
+      .shortcut-hint *,
+      .shortcut-badge {
+        animation: none !important;
+        transition: none !important;
+      }
+      .shortcut-hint { opacity: 1 !important; transform: none !important; }
+    }
+
+    @keyframes shortcutEntrance {
+      0% { opacity: 0; transform: translateY(-8px) scale(0.96); }
+      60% { transform: translateY(2px) scale(1.01); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes shortcutPulse {
+      0% { box-shadow: 0 0 0 0 var(--shortcut-glow); }
+      100% { box-shadow: 0 0 0 6px transparent; }
+    }
+
+    @keyframes shortcutExit {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-8px) scale(0.96); }
+    }
 
   header {
     display: flex;
@@ -74,10 +108,94 @@
 
   .toolbar {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+
+  .toolbar-main {
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
     gap: 8px;
+    width: 100%;
+  }
+
+  .shortcut-hints {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    opacity: 0;
+    animation: shortcutEntrance 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: 300ms;
+  }
+
+  .shortcut-hints.hiding {
+    animation: shortcutExit 300ms ease-in forwards;
+  }
+
+  .shortcut-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--shortcut-bg);
+    border: 1px solid var(--shortcut-border);
+    border-radius: 50px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--shortcut-text);
+    white-space: nowrap;
+    animation: shortcutPulse 1s ease-out 1.5s forwards;
+  }
+
+  .shortcut-hint:first-child {
+    animation-delay: 1.8s;
+  }
+
+  .shortcut-hint kbd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    color: var(--text);
+    box-shadow: var(--shadow-sm);
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .shortcut-hint kbd:first-child {
+    animation: shortcutPulse 1s ease-out 1.9s forwards;
+  }
+
+  .shortcut-hint kbd:last-child {
+    animation: shortcutPulse 1s ease-out 2.1s forwards;
+  }
+
+  .shortcut-hint .key-sep {
+    color: var(--text-dim);
+    font-size: 9px;
+    font-weight: 400;
+    margin: 0 2px;
+  }
+
+  .shortcut-hint .key-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .shortcut-hint:focus,
+  .shortcut-hints:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .direction-indicator {
@@ -230,7 +348,18 @@
   </header>
 
   <div class="toolbar">
-    <div class="direction-indicator">
+    <div class="shortcut-hints" id="shortcutHints" aria-label="Keyboard shortcuts" tabindex="0" role="group">
+      <span class="shortcut-hint" title="Open KeyFix popup" tabindex="0" role="button">
+        <kbd>Ctrl</kbd><span class="key-sep">+</span><kbd>Shift</kbd><span class="key-sep">+</span><kbd>K</kbd>
+        <span class="key-label">Open</span>
+      </span>
+      <span class="shortcut-hint" title="Fix selected text on page" tabindex="0" role="button">
+        <kbd>Ctrl</kbd><span class="key-sep">+</span><kbd>Shift</kbd><span class="key-sep">+</span><kbd>L</kbd>
+        <span class="key-label">Fix</span>
+      </span>
+    </div>
+    <div class="toolbar-main">
+      <div class="direction-indicator">
       <span class="dir-label active" id="labelLeft">EN</span>
       <button id="swapBtn" class="swap-btn" aria-label="Swap direction" title="Swap direction">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -242,8 +371,9 @@
       </button>
       <span class="dir-label" id="labelRight">AR</span>
     </div>
-    <span class="auto-badge on" id="autoBadge" title="Automatically detects which layout your text is in">AUTO</span>
-  </div>
+<span class="auto-badge on" id="autoBadge" title="Automatically detects which layout your text is in">AUTO</span>
+    </div>
+    </div>
 
   <div class="panel">
     <div class="panel-header">

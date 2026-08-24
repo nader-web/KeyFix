@@ -13,9 +13,11 @@
   const themeToggle = document.getElementById("themeToggle");
   const autoBadge = document.getElementById("autoBadge");
   const toast = document.getElementById("toast");
+  const shortcutHints = document.getElementById("shortcutHints");
 
   let direction = "en2ar";
   let autoMode = true;
+  let isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
   function applyDirectionUI() {
     const isEn2Ar = direction === "en2ar";
@@ -25,6 +27,55 @@
     outputLabel.textContent = isEn2Ar ? "Output (Arabic layout)" : "Output (English layout)";
     inputText.classList.toggle("rtl", !isEn2Ar);
     outputText.classList.toggle("rtl", isEn2Ar);
+  }
+
+  function updateShortcutHints() {
+    if (!shortcutHints) return;
+    const modKey = isMac ? "Cmd" : "Ctrl";
+    const hints = shortcutHints.querySelectorAll(".shortcut-hint");
+    // First hint: Open (Ctrl/Cmd+Shift+K)
+    const openKbds = hints[0]?.querySelectorAll("kbd");
+    if (openKbds.length >= 3) {
+      openKbds[0].textContent = modKey;
+      openKbds[1].textContent = "Shift";
+      openKbds[2].textContent = "K";
+    }
+    // Second hint: Fix (Ctrl/Cmd+Shift+L)
+    const fixKbds = hints[1]?.querySelectorAll("kbd");
+    if (fixKbds.length >= 3) {
+      fixKbds[0].textContent = modKey;
+      fixKbds[1].textContent = "Shift";
+      fixKbds[2].textContent = "L";
+    }
+  }
+
+  function checkShortcutHintsVisibility() {
+    if (!shortcutHints) return;
+    chrome.storage.local.get(["kf_shortcutHintsSeen", "kf_shortcutHintsInteractions"], (data) => {
+      const seenCount = data.kf_shortcutHintsSeen || 0;
+      const interactions = data.kf_shortcutHintsInteractions || 0;
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // Hide after 2 opens OR 1 interaction OR reduced motion preference
+      if (seenCount >= 2 || interactions >= 1 || prefersReducedMotion) {
+        shortcutHints.style.display = "none";
+        return;
+      }
+
+      // Increment seen count
+      chrome.storage.local.set({ kf_shortcutHintsSeen: seenCount + 1 });
+    });
+  }
+
+  function recordShortcutInteraction() {
+    chrome.storage.local.get(["kf_shortcutHintsInteractions"], (data) => {
+      const interactions = (data.kf_shortcutHintsInteractions || 0) + 1;
+      chrome.storage.local.set({ kf_shortcutHintsInteractions: interactions });
+      if (interactions >= 1 && shortcutHints) {
+        shortcutHints.classList.add("hiding");
+        setTimeout(() => { shortcutHints.style.display = "none"; }, 300);
+      }
+    });
   }
 
   function runConversion({ persist = true } = {}) {
@@ -53,6 +104,7 @@
     direction = dir;
     applyDirectionUI();
     runConversion();
+    recordShortcutInteraction();
   }
 
   labelLeft.addEventListener("click", () => manualSetDirection("en2ar"));
@@ -65,6 +117,7 @@
     inputText.value = currentOut;
     applyDirectionUI();
     runConversion();
+    recordShortcutInteraction();
   });
 
   inputText.addEventListener("input", () => runConversion());
@@ -74,6 +127,7 @@
     outputText.value = "";
     inputText.focus();
     chrome.storage.local.set({ kf_lastInput: "" });
+    recordShortcutInteraction();
   });
 
   function showToast(msg) {
@@ -92,6 +146,7 @@
       document.execCommand("copy");
       showToast("Copied ✓");
     }
+    recordShortcutInteraction();
   });
 
   themeToggle.addEventListener("click", () => {
@@ -103,6 +158,7 @@
       body.setAttribute("data-theme", "dark");
     }
     chrome.storage.local.set({ kf_theme: isDark ? "light" : "dark" });
+    recordShortcutInteraction();
   });
 
   // Restore persisted state on open.
@@ -127,9 +183,22 @@
       }
 
       applyDirectionUI();
+      updateShortcutHints();
+      checkShortcutHintsVisibility();
+      setupShortcutHintsKeyboardDismiss();
       if (inputText.value) runConversion({ persist: false });
       inputText.focus();
       inputText.setSelectionRange(inputText.value.length, inputText.value.length);
     }
   );
+
+  function setupShortcutHintsKeyboardDismiss() {
+    if (!shortcutHints) return;
+    shortcutHints.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.key === "Enter") {
+        e.preventDefault();
+        recordShortcutInteraction();
+      }
+    });
+  }
 })();
