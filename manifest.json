@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "KeyFix — Arabic/English Typo Fixer",
   "short_name": "KeyFix",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fix text typed on the wrong keyboard layout (Arabic/English) instantly. 100% local, nothing ever leaves your device.",
   "icons": {
     "16": "icons/icon16.png",
