@@ -28,7 +28,15 @@ const KeyFixMap = (function () {
   }
 
   const UNSHIFTED_REV = buildReverse(UNSHIFTED);
-  const SHIFTED_REV = buildReverse(SHIFTED);
+  // Shifted keys whose output is plain ASCII (e.g. '<'→',', 'M'→"'") must not
+  // claim those codes in the reverse map, or ar2en mangles real ASCII
+  // punctuation in mixed text. Those characters pass through unchanged.
+  const SHIFTED_REV = {};
+  for (const k in SHIFTED) {
+    const v = SHIFTED[k];
+    if (/[\x20-\x7E]/.test(v)) continue;
+    if (!(v in SHIFTED_REV)) SHIFTED_REV[v] = k;
+  }
 
   // Multi-char AR sequences ("لا", "لإ", "لأ", "لآ") need lookahead so a
   // reverse conversion consumes both characters, not one at a time.
