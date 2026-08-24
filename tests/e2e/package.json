@@ -1,0 +1,16 @@
+{
+  "name": "keyfix-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Playwright end-to-end suite for the KeyFix extension (logic, UI, all screen sizes).",
+  "scripts": {
+    "test": "playwright test",
+    "test:quick": "playwright test --grep-invert @slow",
+    "install:browsers": "playwright install chromium",
+    "install:deps": "bun install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0"
+  }
+}

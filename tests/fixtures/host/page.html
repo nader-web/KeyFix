@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KeyFix host page</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; padding: 10px; }
+  .row { margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: #555; margin-bottom: 2px; }
+  textarea, input { font-size: 14px; padding: 4px; }
+  #cornerLTR {
+    position: fixed; top: 8px; right: 6px; width: 170px;
+  }
+  #bottomRTL {
+    position: fixed; bottom: 8px; left: 6px; width: 170px;
+  }
+  #ce {
+    border: 1px solid #bbb; min-height: 42px; padding: 6px; border-radius: 4px;
+  }
+  #overlay {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 220px; height: 70px; background: rgba(255, 0, 0, .12);
+    z-index: 2147483646; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div class="row">
+    <label for="mainInput">main textarea (center)</label>
+    <textarea id="mainInput" style="width: 320px; min-height: 64px;"></textarea>
+  </div>
+
+  <div class="row">
+    <label>contenteditable</label>
+    <div id="ce" contenteditable="true"></div>
+  </div>
+
+  <div class="row">
+    <label>shadow DOM input</label>
+    <my-host></my-host>
+  </div>
+
+  <div class="row">
+    <label>iframe field (content script runs in all frames)</label>
+    <iframe src="iframe-child.html" style="width: 90%; height: 110px; border: 1px solid #999;"></iframe>
+  </div>
+
+  <input id="cornerLTR" placeholder="pinned top-right" aria-label="corner ltr">
+  <input id="bottomRTL" placeholder="pinned bottom-left" aria-label="bottom rtl">
+
+  <div id="overlay" title="high z-index overlay"></div>
+
+  <script>
+    const host = document.querySelector("my-host");
+    const root = host.attachShadow({ mode: "open" });
+    root.innerHTML = '<input id="shadowInput" style="width:240px" aria-label="shadow input">';
+  </script>
+</body>
+</html>

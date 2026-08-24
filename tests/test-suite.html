@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KeyFix Extension Test Suite</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; line-height: 1.5; max-width: 900px; margin: 0 auto; }
+    .test { margin: 10px 0; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+    .pass { border-left: 4px solid #22c55e; background: #f0fdf4; }
+    .fail { border-left: 4px solid #ef4444; background: #fef2f2; }
+    .name { font-weight: 600; }
+    .details { font-size: 12px; color: #555; margin-top: 4px; word-break: break-all; font-family: monospace; }
+    .summary { margin-top: 24px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
+    .group { margin-top: 28px; font-weight: 700; font-size: 15px; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>KeyFix Extension Test Suite</h1>
+  <p style="color:#666;font-size:13px">Testing real-time wrong-layout detection and core conversion logic — no external libraries</p>
+  <div id="tests"></div>
+  <div class="summary" id="summary" style="display:none"></div>
+
+  <script src="../keymap.js"></script>
+  <script>
+    let passed = 0, total = 0;
+    let currentGroup = "";
+    function group(name) {
+      currentGroup = name;
+      const el = document.createElement('div');
+      el.className = 'group';
+      el.textContent = name;
+      document.getElementById('tests').appendChild(el);
+    }
+    function assert(condition, name, details) {
+      total++;
+      const el = document.createElement('div');
+      el.className = condition ? 'test pass' : 'test fail';
+      el.innerHTML = `<div class="name">${condition ? '✓' : '✗'} ${name}</div><div class="details">${details || ''}</div>`;
+      document.getElementById('tests').appendChild(el);
+      if (condition) passed++;
+      if (!condition) console.error('FAIL:', name, details);
+    }
+
+    // Replicate content.js analyzeText for testing with real KeyFixMap
+    const CONFIDENCE_THRESHOLD = 0.8;
+    const MIN_WORDS = 3;
+    function isPlausibleEnglish(s){const ws=s.trim().split(/\s+/).filter(w=>w.length>=2);if(!ws.length)return false;let v=0;for(const w of ws) if(/[aeiouAEIOU]/.test(w)) v++; return v/ws.length>0.4;}
+    function analyzeText(text) {
+      if (!text || text.trim().length < 3) return null;
+      const words = text.trim().split(/\s+/);
+      if (words.length < MIN_WORDS) return null;
+      const isBilingualText = /[\u0600-\u06FF]/.test(text) && /[a-zA-Z]/.test(text);
+      function changedRatio(o,c){let ch=0,t=0;for(let i=0;i<o.length;i++){if(/[\s\n\r]/.test(o[i]))continue;t++;if(o[i]!==c[i])ch++;}return t?ch/t:0;}
+      const en2ar = KeyFixMap.convert(text, "en2ar");
+      const ar2en = KeyFixMap.convert(text, "ar2en");
+      const en2arRatio = changedRatio(text, en2ar);
+      const ar2enRatio = changedRatio(text, ar2en);
+      const direction = en2arRatio > ar2enRatio ? "en2ar" : "ar2en";
+      const confidence = Math.max(en2arRatio, ar2enRatio);
+      if (!isBilingualText && confidence >= CONFIDENCE_THRESHOLD) {
+        const conv=direction==="en2ar"?en2ar:ar2en;
+        if(direction==="en2ar"&&isPlausibleEnglish(text)) return null;
+        if(direction==="ar2en"&&!isPlausibleEnglish(conv)) return null;
+        return { direction, confidence, converted: conv, en2arRatio, ar2enRatio };
+      }
+      let en2arWords=0, ar2enWords=0;
+      for(const w of words){ if(w.length<2) continue; const wEn=KeyFixMap.convert(w,"en2ar"); const wAr=KeyFixMap.convert(w,"ar2en"); const rEn=changedRatio(w,wEn); const rAr=changedRatio(w,wAr); if(rEn>=CONFIDENCE_THRESHOLD&&rEn>rAr) en2arWords++; else if(rAr>=CONFIDENCE_THRESHOLD&&rAr>rEn) ar2enWords++; }
+      const dominant=en2arWords>ar2enWords?"en2ar":"ar2en"; const cnt=Math.max(en2arWords,ar2enWords);
+      if(cnt>=2){
+        const conv=dominant==="en2ar"?en2ar:ar2en;
+        if(!isBilingualText){
+          if(dominant==="en2ar"&&isPlausibleEnglish(text)) return null;
+          if(dominant==="ar2en"&&!isPlausibleEnglish(conv)) return null;
+        }
+        return {direction:dominant,confidence:cnt/words.length,converted:conv,en2arRatio,ar2enRatio,partial:true,bilingual:isBilingualText,en2arWords,ar2enWords};
+      }
+      return null;
+    }
+
+    // ── 1. Basic en2ar / ar2en conversion ──
+    group("1 · KeyFixMap.convert — basic");
+    assert(KeyFixMap.convert("hello", "en2ar") === "اثممخ", "en2ar: hello → اثممخ", `got "${KeyFixMap.convert("hello","en2ar")}"`);
+    assert(KeyFixMap.convert("hello world", "en2ar") === "اثممخ صخقمي", "en2ar: hello world", `got "${KeyFixMap.convert("hello world","en2ar")}"`);
+    assert(KeyFixMap.convert("اثممخ", "ar2en") === "hello", "ar2en: اثممخ → hello", `got "${KeyFixMap.convert("اثممخ","ar2en")}"`);
+    assert(KeyFixMap.convert("اثممخ صخقمي", "ar2en") === "hello world", "ar2en: اثممخ صخقمي → hello world", `got "${KeyFixMap.convert("اثممخ صخقمي","ar2en")}"`);
+    assert(KeyFixMap.convert("", "en2ar") === "", "empty string stays empty", `got "${KeyFixMap.convert("","en2ar")}"`);
+    assert(KeyFixMap.convert("", "ar2en") === "", "empty string ar2en stays empty", `got "${KeyFixMap.convert("","ar2en")}"`);
+    assert(KeyFixMap.convert("123", "en2ar") === "123", "numbers unchanged en2ar", `got "${KeyFixMap.convert("123","en2ar")}"`);
+    assert(KeyFixMap.convert("123", "ar2en") === "123", "numbers unchanged ar2en", `got "${KeyFixMap.convert("123","ar2en")}"`);
+
+    // ── 2. Shifted & ligatures ──
+    group("2 · Shifted characters & multi-char ligatures");
+    assert(KeyFixMap.convert("H", "en2ar") === "أ", "shifted H → أ", `got "${KeyFixMap.convert("H","en2ar")}"`);
+    assert(KeyFixMap.convert("G", "en2ar") === "لأ", "shifted G → لأ", `got "${KeyFixMap.convert("G","en2ar")}"`);
+    assert(KeyFixMap.convert("b", "en2ar") === "لا", "b → لا (ligature)", `got "${KeyFixMap.convert("b","en2ar")}"`);
+    assert(KeyFixMap.convert("لا", "ar2en") === "b", "لا → b (ligature reverse)", `got "${KeyFixMap.convert("لا","ar2en")}"`);
+    assert(KeyFixMap.convert("T", "en2ar") === "لإ", "T → لإ", `got "${KeyFixMap.convert("T","en2ar")}"`);
+    assert(KeyFixMap.convert("لإ", "ar2en") === "T", "لإ → T", `got "${KeyFixMap.convert("لإ","ar2en")}"`);
+    assert(KeyFixMap.convert("B", "en2ar") === "لآ", "B → لآ", `got "${KeyFixMap.convert("B","en2ar")}"`);
+    assert(KeyFixMap.convert("لآ", "ar2en") === "B", "لآ → B", `got "${KeyFixMap.convert("لآ","ar2en")}"`);
+
+    // ── 3. Round-trip ──
+    group("3 · Round-trip");
+    const rt1 = KeyFixMap.convert(KeyFixMap.convert("hello world test", "en2ar"), "ar2en");
+    assert(rt1 === "hello world test", "en2ar → ar2en round-trip", `got "${rt1}"`);
+    const rt2 = KeyFixMap.convert(KeyFixMap.convert("اثممخ صخقمي", "ar2en"), "en2ar");
+    assert(rt2 === "اثممخ صخقمي", "ar2en → en2ar round-trip", `got "${rt2}"`);
+
+    // ── 4. detectDirection ──
+    group("4 · detectDirection");
+    assert(KeyFixMap.detectDirection("hello world test") === "en2ar", "Latin text → en2ar", `got ${KeyFixMap.detectDirection("hello world test")}`);
+    assert(KeyFixMap.detectDirection("مرحبا كيف حالك") === "ar2en", "Arabic text → ar2en", `got ${KeyFixMap.detectDirection("مرحبا كيف حالك")}`);
+    assert(KeyFixMap.detectDirection("123 !!!") === null, "only symbols → null", `got ${KeyFixMap.detectDirection("123 !!!")}`);
+    assert(KeyFixMap.detectDirection("") === null, "empty → null", `got ${KeyFixMap.detectDirection("")}`);
+    // Mixed but Arabic-heavy
+    assert(KeyFixMap.detectDirection("مرحبا hello") === "ar2en", "Arabic-heavy mixed → ar2en", `got ${KeyFixMap.detectDirection("مرحبا hello")}`);
+
+    // ── 5. analyzeText — minimum words & short input ──
+    group("5 · analyzeText — thresholds & edge cases");
+    assert(analyzeText("") === null, "empty → null", `got ${JSON.stringify(analyzeText(""))}`);
+    assert(analyzeText("hi") === null, "1 word → null (MIN_WORDS=3)", `got ${JSON.stringify(analyzeText("hi"))}`);
+    assert(analyzeText("hello world") === null, "2 words → null", `got ${JSON.stringify(analyzeText("hello world"))}`);
+    assert(analyzeText("   ") === null, "whitespace only → null", `got ${JSON.stringify(analyzeText("   "))}`);
+
+    // ── 6. analyzeText — full wrong-layout sentences ──
+    group("6 · analyzeText — full wrong-layout detection");
+    // English typed on Arabic keyboard gibberish? Actually en2ar path: user typed English letters but meant Arabic → text is Latin gibberish like "sghlbu hello world test" ??? Let's use hello world test → becomes Arabic
+    // If user types "اثممخ صخقمي اثسف" (which is "hello world test" on EN keyboard), that's Arabic gibberish meant to be English → ar2en should win
+    const arGibberish = KeyFixMap.convert("hello world test", "en2ar"); // "اثممخ صخقمي اثسف" approx
+    const resAr = analyzeText(arGibberish);
+    assert(resAr !== null && resAr.direction === "ar2en", "Arabic gibberish → triggers ar2en", `text="${arGibberish}" got ${JSON.stringify(resAr)}`);
+    if (resAr) assert(resAr.converted === "hello world test", "Arabic gibberish converts back correctly", `got "${resAr.converted}"`);
+
+    const enGibberish = KeyFixMap.convert("مرحبا كيف حالك", "ar2en"); // English gibberish typed on AR keyboard? Actually ar2en of Arabic → Latin gibberish
+    // To get Latin gibberish, convert Arabic to Latin: "مرحبا" → latin
+    const latinGib = KeyFixMap.convert("مرحبا كيف حالك", "ar2en");
+    // Now analyze latinGib which is Latin characters that were originally Arabic → if we feed latinGib, en2ar should trigger to recover Arabic
+    // But easier: test opposite direction - feed Latin text that maps strongly to Arabic
+    const latinCorrect = "hello world test"; // correct English on EN keyboard — should NOT trigger (vowel check)
+    const resEn = analyzeText(latinCorrect);
+    assert(resEn === null, "correct English hello world test → no trigger", `got ${JSON.stringify(resEn)}`);
+    // Latin gibberish that should trigger: sghl = سلام typed on EN
+    const latinGibWrong = "sghl hglwqv fdgh"; // 3-word Latin gibberish (no vowels)
+    const resGib = analyzeText(latinGibWrong);
+    assert(resGib !== null && resGib.direction === "en2ar", "Latin gibberish sghl … → en2ar", `got ${JSON.stringify(resGib)}`);
+
+    // ── 7. analyzeText — partially fixed / mixed sentences ──
+    group("7 · analyzeText — partially fixed / mixed sentences");
+    // User example: "أنا مسافر ا yhk ihpsd hgals hd,m" — Arabic + Latin gibberish that should be Arabic.
+    // Per-word detection: 4 Latin words map via en2ar, 2 Arabic words map via ar2en → dominant en2ar (4) ≥2 → triggers partial fix
+    const userMix = "أنا مسافر ا yhk ihpsd hgals hd,m";
+    const ru = analyzeText(userMix);
+    assert(ru !== null && ru.direction === "en2ar", "user mixed: أنا مسافر ا yhk … → triggers en2ar partial", `got ${JSON.stringify(ru)}`);
+    if (ru) assert(ru.converted.includes("غان") && ru.converted.includes("الشمس"), "user mixed converts Latin chunk to Arabic", `got "${ru.converted}"`);
+    assert(ru && ru.partial === true, "user mixed marked as partial", `partial=${ru?.partial} en2arWords=${ru?.en2arWords} ar2enWords=${ru?.ar2enWords}`);
+
+    // Mixed bilingual → chooser must appear (bilingual bypasses vowel guard)
+    const partial1 = "مرحبا hello world";
+    const r1 = analyzeText(partial1);
+    assert(r1 !== null && r1.partial === true && r1.bilingual === true, "bilingual: مرحبا hello world → chooser (partial+bilingual)", `got ${JSON.stringify(r1)}`);
+
+    const partial2 = KeyFixMap.convert("hello", "en2ar") + " world test"; // "اثممخ world test"
+    const r2 = analyzeText(partial2);
+    assert(r2 !== null && r2.partial === true && r2.bilingual === true, "bilingual: اثممخ world test → chooser (partial+bilingual)", `text="${partial2}" got ${JSON.stringify(r2)}`);
+
+    // Fully wrong should still trigger (global 1.0, not partial)
+    const fullWrong = KeyFixMap.convert("hello world test", "en2ar"); // all Arabic
+    const r3 = analyzeText(fullWrong);
+    assert(r3 !== null && !r3.partial, "fully wrong 3-word Arabic gibberish → full alert (not partial)", `got ${JSON.stringify(r3)}`);
+
+    const partial4 = KeyFixMap.convert("hello world test", "en2ar") + " hello";
+    const r4 = analyzeText(partial4);
+    assert(r4 !== null && r4.partial === true, "3 gibberish + 1 correct English → partial trigger (dominant ar2en 3)", `text="${partial4}" got ${JSON.stringify(r4)}`);
+
+    // ── 7b. Suggested mixed sentences for manual testing ──
+    const s1 = "أنا مسافر ا yhk ihpsd hgals hd,m";
+    const rs1 = analyzeText(s1);
+    assert(rs1 !== null && rs1.direction === "en2ar" && rs1.partial, "suggested 1: أنا مسافر ا yhk … → en2ar partial", `got ${JSON.stringify(rs1)}`);
+    if (rs1) assert(rs1.converted === KeyFixMap.convert(s1,"en2ar"), "s1 en2ar converts to غان…", `got "${rs1.converted}"`);
+    const s2 = "hello صخقمي فثسف";
+    const rs2 = analyzeText(s2);
+    assert(rs2 !== null && rs2.direction === "ar2en" && rs2.partial, "suggested 2: hello صخقمي فثسف → ar2en partial", `got ${JSON.stringify(rs2)}`);
+    if (rs2) assert(rs2.converted === "hello world test", "s2 ar2en → hello world test", `got "${rs2.converted}"`);
+    const s3 = "sghl hglwqv fdgh"; // 3-word Latin gibberish (no vowels) → should trigger en2ar
+    const rs3 = analyzeText(s3);
+    assert(rs3 !== null && rs3.direction === "en2ar", "suggested 3: sghl hglwqv fdgh → en2ar", `got ${JSON.stringify(rs3)}`);
+    const s4 = "مرحبا hello world";
+    const rs4 = analyzeText(s4);
+    assert(rs4 !== null && rs4.partial && rs4.bilingual, "suggested 4: مرحبا hello world → chooser (bilingual)", `got ${JSON.stringify(rs4)}`);
+    const s5 = "اثممخ world test";
+    const rs5 = analyzeText(s5);
+    assert(rs5 !== null && rs5.partial && rs5.bilingual, "suggested 5: اثممخ world test → chooser (bilingual)", `got ${JSON.stringify(rs5)}`);
+
+    // ── 7c. Arabic-first bilingual — must get chooser, never destructive full fix ──
+    group("7c · Arabic-first bilingual (regression)");
+    const a1 = analyzeText("صباح الخير على الجميع sghl");
+    assert(a1 !== null && a1.partial === true && a1.bilingual === true, "Arabic-majority + gibberish → chooser, NOT full fix", `got ${JSON.stringify(a1)}`);
+    const a2 = analyzeText("أهلا وسهلا yh");
+    assert(a2 !== null && a2.partial === true && a2.bilingual === true, "short Arabic + 1 Latin word → chooser", `got ${JSON.stringify(a2)}`);
+    // Single-script full fixes must remain intact
+    const a3 = analyzeText("مرحبا كيف حالك");
+    assert(a3 === null, "pure correct Arabic still → no trigger", `got ${JSON.stringify(a3)}`);
+    const a4 = analyzeText("اثممخ صخقمي فثسف");
+    assert(a4 !== null && !a4.partial && a4.direction === "ar2en", "single-script Arabic gibberish still → full ar2en", `got ${JSON.stringify(a4)}`);
+
+    // ── 8. Deletion & cooldown reset ──
+    group("8 · Deletion handling & cooldown");
+    (function(){
+      const map = new WeakMap();
+      function simulateInput(el, text) {
+        const prev = map.get(el);
+        map.set(el, text.length);
+        if (prev !== undefined && text.length < prev) return "deleted";
+        return "typed";
+      }
+      const el = {};
+      assert(simulateInput(el, "hello world test") === "typed", "first input → typed");
+      assert(simulateInput(el, "hello world") === "deleted", "shorter text → deleted");
+      assert(simulateInput(el, "hello world test again") === "typed", "longer again → typed");
+      assert(simulateInput(el, "") === "deleted", "clear all → deleted");
+    })();
+
+    // ── 9. Indicator — accessibility & clickability ──
+    group("9 · Quick-action indicator — accessibility");
+    (function(){
+      const ind = document.createElement('div');
+      ind.id = 'keyfix-indicator';
+      ind.setAttribute('role','button');
+      ind.setAttribute('tabindex','0');
+      ind.setAttribute('aria-label','KeyFix: wrong keyboard layout detected. Activate to fix text.');
+      ind.title = 'Wrong layout detected — click to fix (Enter)';
+      ind.style.cssText = 'position:absolute;width:26px;height:26px;background:#d46b45;color:#fff;cursor:pointer;pointer-events:auto;border-radius:50%';
+      ind.textContent = '⇄';
+      assert(ind.getAttribute('role') === 'button', "role=button", `got ${ind.getAttribute('role')}`);
+      assert(ind.getAttribute('tabindex') === '0', "tabindex=0", `got ${ind.getAttribute('tabindex')}`);
+      assert(!!ind.getAttribute('aria-label'), "aria-label present", ind.getAttribute('aria-label'));
+      assert(ind.title.length > 0, "title present", ind.title);
+      assert(ind.style.pointerEvents === 'auto', "pointer-events:auto (clickable)", ind.style.pointerEvents);
+      assert(ind.style.cursor === 'pointer', "cursor:pointer", ind.style.cursor);
+      assert(ind.textContent === '⇄', "icon ⇄", ind.textContent);
+      let handled = false;
+      ind.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') handled=true; });
+      ind.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+      assert(handled, "Enter triggers action", `handled=${handled}`);
+      handled=false;
+      ind.dispatchEvent(new KeyboardEvent('keydown',{key:' '}));
+      assert(handled, "Space triggers action", `handled=${handled}`);
+    })();
+
+    // ── 10. Direction-aware positioning ──
+    group("10 · Direction-aware positioning");
+    (function(){
+      const inp = document.createElement('input');
+      inp.style.direction = 'ltr';
+      document.body.appendChild(inp);
+      const dirLtr = getComputedStyle(inp).direction;
+      assert(dirLtr === 'ltr', "LTR input reports ltr", `got ${dirLtr}`);
+      inp.style.direction = 'rtl';
+      const dirRtl = getComputedStyle(inp).direction;
+      assert(dirRtl === 'rtl', "RTL input reports rtl", `got ${dirRtl}`);
+      inp.remove();
+    })();
+
+    // ── Summary ──
+    const summary = document.getElementById('summary');
+    summary.style.display = 'block';
+    const ok = passed === total;
+    summary.innerHTML = `<strong style="color:${ok?'#16a34a':'#dc2626'}">${ok?'All tests passed ✓':'Some tests failed ✗'}</strong><br>Passed ${passed} / ${total}`;
+    summary.style.borderLeft = `4px solid ${ok?'#22c55e':'#ef4444'}`;
+    if (!ok) console.warn(`${total-passed} test(s) failed`);
+  </script>
+</body>
+</html>

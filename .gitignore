@@ -1,0 +1,6 @@
+node_modules/
+test-results/
+.playwright-mcp/
+KeyFix.zip
+KeyFix2.rar
+*.png
