@@ -161,9 +161,14 @@
     recordShortcutInteraction();
   });
 
+  const realtimeToggle = document.getElementById("realtimeToggle");
+  realtimeToggle?.addEventListener("change", () => {
+    chrome.storage.local.set({ kf_realtimeEnabled: realtimeToggle.checked });
+  });
+
   // Restore persisted state on open.
   chrome.storage.local.get(
-    ["kf_theme", "kf_lastInput", "kf_direction", "kf_autoMode", "kf_pendingSelection"],
+    ["kf_theme", "kf_lastInput", "kf_direction", "kf_autoMode", "kf_pendingSelection", "kf_realtimeEnabled"],
     (data) => {
       if (data.kf_theme === "dark") document.body.setAttribute("data-theme", "dark");
 
@@ -186,6 +191,7 @@
       updateShortcutHints();
       checkShortcutHintsVisibility();
       setupShortcutHintsKeyboardDismiss();
+      if (realtimeToggle) realtimeToggle.checked = data.kf_realtimeEnabled !== false;
       if (inputText.value) runConversion({ persist: false });
       inputText.focus();
       inputText.setSelectionRange(inputText.value.length, inputText.value.length);
