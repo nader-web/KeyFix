@@ -307,8 +307,20 @@
   .footer-row a { color: var(--text-dim); text-decoration: none; }
   .footer-row a:hover { color: var(--accent); }
 
+  .toggle-switch {
+    --toggle-off: var(--surface-hover);
+    --toggle-on: var(--accent);
+  }
+  [data-theme="dark"] .toggle-switch {
+    --toggle-off: var(--surface-hover);
+    --toggle-on: var(--accent);
+  }
+
+  .toggle-slider {
+    background: var(--toggle-off);
+  }
   .toggle-switch input:checked + .toggle-slider {
-    background: var(--accent);
+    background: var(--toggle-on);
   }
   .toggle-switch input:focus-visible + .toggle-slider {
     outline: 2px solid var(--accent);
@@ -322,7 +334,7 @@
     background: white;
     top: 3px; left: 3px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, background 0.2s ease;
   }
   .toggle-switch input:checked + .toggle-slider::after {
     transform: translateX(18px);
@@ -421,9 +433,9 @@
         <div style="font-size: 13px; font-weight: 500; color: var(--text);">Alert on wrong layout</div>
         <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Plays a soft chime when you pause typing in the wrong layout</div>
       </div>
-      <label class="toggle-switch" style="position: relative; width: 44px; height: 26px;">
-        <input type="checkbox" id="realtimeToggle" style="opacity: 0; width: 0; height: 0;">
-        <span class="toggle-slider" style="position: absolute; inset: 0; background: var(--border); border-radius: 13px; transition: background 0.2s;"></span>
+      <label class="toggle-switch" style="position: relative; width: 44px; height: 26px; display: inline-flex; align-items: center;">
+        <input type="checkbox" id="realtimeToggle" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 1; margin: 0; width: 100%; height: 100%;">
+        <span class="toggle-slider" style="position: absolute; inset: 0; border-radius: 13px; transition: background 0.2s;"></span>
       </label>
     </div>
   </div>
